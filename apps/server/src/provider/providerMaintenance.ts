@@ -33,6 +33,7 @@ const CommandLookupEnvConfig = Config.all({
   Path: Config.string("Path").pipe(Config.option),
   path: Config.string("path").pipe(Config.option),
   PATHEXT: Config.string("PATHEXT").pipe(Config.option),
+  ChocolateyInstall: Config.string("ChocolateyInstall").pipe(Config.option),
 }).pipe(Config.map(compactEnv));
 
 const readCommandLookupEnv = CommandLookupEnvConfig.pipe(Effect.orElseSucceed(() => ({})));
@@ -210,6 +211,7 @@ function makeHomebrewProviderMaintenanceCapabilities(
 
 function makeChocolateyProviderMaintenanceCapabilities(
   definition: PackageManagedProviderMaintenanceDefinition,
+  executable: string,
 ): ProviderMaintenanceCapabilities | null {
   if (!definition.chocolateyPackageName) {
     return null;
@@ -218,7 +220,7 @@ function makeChocolateyProviderMaintenanceCapabilities(
   return makeProviderMaintenanceCapabilities({
     provider: definition.provider,
     packageName: definition.npmPackageName,
-    updateExecutable: "choco",
+    updateExecutable: executable,
     updateArgs: ["upgrade", definition.chocolateyPackageName, "--yes"],
     updateLockKey: "chocolatey",
   });
@@ -290,8 +292,27 @@ function isHomebrewCommandPath(commandPath: string): boolean {
   );
 }
 
-function isChocolateyCommandPath(commandPath: string): boolean {
-  return normalizeCommandPath(commandPath).includes("/programdata/chocolatey/bin/");
+function resolveChocolateyUpdateExecutable(
+  commandPaths: ReadonlyArray<string>,
+  environment: NodeJS.ProcessEnv | undefined,
+): string | null {
+  const configuredInstall = Object.entries(environment ?? {}).find(
+    ([name, value]) => name.toLowerCase() === "chocolateyinstall" && nonEmptyString(value) !== null,
+  )?.[1];
+  const configuredBin = configuredInstall
+    ? `${normalizeCommandPath(configuredInstall).replace(/\/+$/u, "")}/bin/`
+    : null;
+
+  for (const commandPath of commandPaths) {
+    const normalized = normalizeCommandPath(commandPath);
+    if (
+      normalized.includes("/programdata/chocolatey/bin/") ||
+      (configuredBin !== null && normalized.startsWith(configuredBin))
+    ) {
+      return commandPath.replace(/[^\\/]+$/u, "choco.exe");
+    }
+  }
+  return null;
 }
 
 export function resolvePackageManagedProviderMaintenance(
@@ -337,9 +358,10 @@ export function resolvePackageManagedProviderMaintenance(
     if (commandPaths.some(isHomebrewCommandPath)) {
       return makeHomebrewProviderMaintenanceCapabilities(definition);
     }
-    if (commandPaths.some(isChocolateyCommandPath)) {
+    const chocolateyExecutable = resolveChocolateyUpdateExecutable(commandPaths, options?.env);
+    if (chocolateyExecutable !== null) {
       return (
-        makeChocolateyProviderMaintenanceCapabilities(definition) ??
+        makeChocolateyProviderMaintenanceCapabilities(definition, chocolateyExecutable) ??
         makeManualOnlyProviderMaintenanceCapabilities({
           provider: definition.provider,
           packageName: definition.npmPackageName,

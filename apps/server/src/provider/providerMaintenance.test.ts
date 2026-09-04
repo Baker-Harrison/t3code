@@ -318,6 +318,8 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
         const chocolateyBinDir = NodePath.join(tempDir, "ProgramData", "chocolatey", "bin");
         NodeFS.mkdirSync(chocolateyBinDir, { recursive: true });
         NodeFS.writeFileSync(NodePath.join(chocolateyBinDir, "package-tool.exe"), "");
+        const chocolateyPath = NodePath.join(chocolateyBinDir, "choco.exe");
+        NodeFS.writeFileSync(chocolateyPath, "");
 
         const capabilities = yield* resolveProviderMaintenanceCapabilitiesEffect(
           packageToolUpdate,
@@ -334,13 +336,41 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
           provider: driver("packageTool"),
           packageName: "@example/package-tool",
           update: {
-            command: "choco upgrade package-tool --yes",
-            executable: "choco",
+            command: `${chocolateyPath} upgrade package-tool --yes`,
+            executable: chocolateyPath,
             args: ["upgrade", "package-tool", "--yes"],
             lockKey: "chocolatey",
           },
         });
       }),
+  );
+
+  it.effect("uses ChocolateyInstall for non-default Windows installations", () =>
+    Effect.gen(function* () {
+      const tempDir = yield* makeTempDir("t3-custom-chocolatey-capabilities");
+      const chocolateyInstall = NodePath.join(tempDir, "Chocolatey");
+      const chocolateyBinDir = NodePath.join(chocolateyInstall, "bin");
+      NodeFS.mkdirSync(chocolateyBinDir, { recursive: true });
+      NodeFS.writeFileSync(NodePath.join(chocolateyBinDir, "package-tool.exe"), "");
+      const chocolateyPath = NodePath.join(chocolateyBinDir, "choco.exe");
+      NodeFS.writeFileSync(chocolateyPath, "");
+
+      const capabilities = yield* resolveProviderMaintenanceCapabilitiesEffect(packageToolUpdate, {
+        binaryPath: "package-tool",
+        env: {
+          PATH: chocolateyBinDir,
+          PATHEXT: ".COM;.EXE;.BAT;.CMD",
+          ChocolateyInstall: chocolateyInstall,
+        },
+      }).pipe(Effect.provideService(HostProcessPlatform, "win32"));
+
+      expect(capabilities.update).toEqual({
+        command: `${chocolateyPath} upgrade package-tool --yes`,
+        executable: chocolateyPath,
+        args: ["upgrade", "package-tool", "--yes"],
+        lockKey: "chocolatey",
+      });
+    }),
   );
 
   it("switches package-tool to Homebrew updates when the binary resolves through Homebrew", () => {
