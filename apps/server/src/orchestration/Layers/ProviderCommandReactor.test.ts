@@ -418,6 +418,8 @@ describe("ProviderCommandReactor", () => {
         const engine = yield* OrchestrationEngineService;
         return {
           readEvents: engine.readEvents,
+          readThreadEvents: engine.readThreadEvents,
+          getThreadReplayStats: engine.getThreadReplayStats,
           dispatch: (command) => {
             if (command.type === "thread.title.regeneration.complete") {
               titleRegenerationCompletionDispatchAttempts += 1;
@@ -461,6 +463,8 @@ describe("ProviderCommandReactor", () => {
           refreshLocalStatus: () =>
             Effect.die("refreshLocalStatus should not be called in this test"),
           refreshStatus,
+          refreshPullRequestStatus: () =>
+            Effect.die("refreshPullRequestStatus should not be called in this test"),
           streamStatus: () => Stream.die("streamStatus should not be called in this test"),
         }),
       ),
