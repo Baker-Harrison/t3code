@@ -67,6 +67,7 @@ export interface PackageManagedProviderMaintenanceDefinition {
   readonly provider: ProviderDriverKind;
   readonly npmPackageName: string;
   readonly homebrewFormula: string | null;
+  readonly chocolateyPackageName?: string;
   readonly nativeUpdate: {
     readonly executable: string;
     readonly args: ReadonlyArray<string>;
@@ -207,6 +208,22 @@ function makeHomebrewProviderMaintenanceCapabilities(
   });
 }
 
+function makeChocolateyProviderMaintenanceCapabilities(
+  definition: PackageManagedProviderMaintenanceDefinition,
+): ProviderMaintenanceCapabilities | null {
+  if (!definition.chocolateyPackageName) {
+    return null;
+  }
+
+  return makeProviderMaintenanceCapabilities({
+    provider: definition.provider,
+    packageName: definition.npmPackageName,
+    updateExecutable: "choco",
+    updateArgs: ["upgrade", definition.chocolateyPackageName, "--yes"],
+    updateLockKey: "chocolatey",
+  });
+}
+
 function makeNativeProviderMaintenanceCapabilities(
   definition: PackageManagedProviderMaintenanceDefinition,
 ): ProviderMaintenanceCapabilities | null {
@@ -273,6 +290,10 @@ function isHomebrewCommandPath(commandPath: string): boolean {
   );
 }
 
+function isChocolateyCommandPath(commandPath: string): boolean {
+  return normalizeCommandPath(commandPath).includes("/programdata/chocolatey/bin/");
+}
+
 export function resolvePackageManagedProviderMaintenance(
   definition: PackageManagedProviderMaintenanceDefinition,
   options?: ProviderMaintenanceCapabilityResolutionOptions,
@@ -315,6 +336,15 @@ export function resolvePackageManagedProviderMaintenance(
     }
     if (commandPaths.some(isHomebrewCommandPath)) {
       return makeHomebrewProviderMaintenanceCapabilities(definition);
+    }
+    if (commandPaths.some(isChocolateyCommandPath)) {
+      return (
+        makeChocolateyProviderMaintenanceCapabilities(definition) ??
+        makeManualOnlyProviderMaintenanceCapabilities({
+          provider: definition.provider,
+          packageName: definition.npmPackageName,
+        })
+      );
     }
   }
 

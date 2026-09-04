@@ -35,6 +35,7 @@ const packageToolUpdate = makePackageManagedProviderMaintenanceResolver({
   provider: driver("packageTool"),
   npmPackageName: "@example/package-tool",
   homebrewFormula: "package-tool",
+  chocolateyPackageName: "package-tool",
   nativeUpdate: null,
 });
 const nativePackageToolUpdate = makePackageManagedProviderMaintenanceResolver({
@@ -304,6 +305,39 @@ it.layer(NodeServices.layer)("providerMaintenance", (it) => {
             args: ["add", "-g", "@example/scoped-package-tool@latest"],
 
             lockKey: "pnpm-global",
+          },
+        });
+      }),
+  );
+
+  it.effect(
+    "switches package-managed providers to Chocolatey updates when the resolved binary is a Chocolatey shim",
+    () =>
+      Effect.gen(function* () {
+        const tempDir = yield* makeTempDir("t3-chocolatey-capabilities");
+        const chocolateyBinDir = NodePath.join(tempDir, "ProgramData", "chocolatey", "bin");
+        NodeFS.mkdirSync(chocolateyBinDir, { recursive: true });
+        NodeFS.writeFileSync(NodePath.join(chocolateyBinDir, "package-tool.exe"), "");
+
+        const capabilities = yield* resolveProviderMaintenanceCapabilitiesEffect(
+          packageToolUpdate,
+          {
+            binaryPath: "package-tool",
+            env: {
+              PATH: chocolateyBinDir,
+              PATHEXT: ".COM;.EXE;.BAT;.CMD",
+            },
+          },
+        ).pipe(Effect.provideService(HostProcessPlatform, "win32"));
+
+        expect(capabilities).toEqual({
+          provider: driver("packageTool"),
+          packageName: "@example/package-tool",
+          update: {
+            command: "choco upgrade package-tool --yes",
+            executable: "choco",
+            args: ["upgrade", "package-tool", "--yes"],
+            lockKey: "chocolatey",
           },
         });
       }),
