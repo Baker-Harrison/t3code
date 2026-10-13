@@ -12,7 +12,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { Check, Copy } from "lucide";
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { APP_BASE_NAME, APP_DISPLAY_NAME, APP_STAGE_LABEL, APP_VERSION } from "../branding";
 import { resolveServerBackedAppDisplayName } from "../branding.logic";
@@ -22,7 +22,6 @@ import { CustomSnoozeDialogHost } from "../components/CustomSnoozeDialog";
 import { ConfirmDialogHost } from "../components/ConfirmDialogHost";
 import { KeybindingsConfigWarning } from "../components/KeybindingsConfigWarning";
 import { FirstRunGate } from "../components/onboarding/FirstRunGate";
-import { ConnectOnboardingDialog } from "../components/cloud/ConnectOnboardingDialog";
 import { RelayClientInstallDialog } from "../components/cloud/RelayClientInstallDialog";
 import { SshPasswordPromptDialog } from "../components/desktop/SshPasswordPromptDialog";
 import { SnapShotCoordinator } from "../components/desktop/SnapShotCoordinator";
@@ -85,6 +84,15 @@ import {
 import { getDesktopSnapShotBridge } from "../lib/desktopSnapShot";
 import { installDesktopPasteAsText } from "../lib/desktopPasteAsText";
 import { shouldResumeSnapShotSetupOnStartup } from "../lib/snapShotSetupResume";
+import { hasCloudPublicConfig } from "../cloud/publicConfig";
+
+// The onboarding dialog depends on the Clerk runtime, which local-mode users
+// never need, so it stays out of the startup graph.
+const ConnectOnboardingDialog = lazy(() =>
+  import("../components/cloud/ConnectOnboardingDialog").then((module) => ({
+    default: module.ConnectOnboardingDialog,
+  })),
+);
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
@@ -248,7 +256,11 @@ function RootRouteView() {
           {primaryEnvironmentAuthenticated ? <DesktopWebLinkCoordinator /> : null}
           {isElectron ? <RunningThreadKeepAlive /> : null}
           <RelayClientInstallDialog />
-          <ConnectOnboardingDialog />
+          {hasCloudPublicConfig() ? (
+            <Suspense fallback={null}>
+              <ConnectOnboardingDialog />
+            </Suspense>
+          ) : null}
           <SshPasswordPromptDialog />
           <SnapShotCoordinator />
           <ThreadNotificationCoordinator />
