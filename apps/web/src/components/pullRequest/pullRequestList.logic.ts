@@ -621,7 +621,7 @@ export function partitionPullRequestsWithPriority<Entry extends PullRequestListE
       others.push(entry);
     }
   }
-  const byRecency = (left: Entry, right: Entry) => right.updatedAt.localeCompare(left.updatedAt);
+  const byRecency = (left: Entry, right: Entry) => newestFirst(left.updatedAt, right.updatedAt);
   return (
     [
       { key: "authored", entries: [...authoredByKey.values()].toSorted(byRecency) },
@@ -740,7 +740,7 @@ export function mergePullRequestLists(
   return {
     viewers,
     providers: [...providers.values()],
-    entries: entries.toSorted((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    entries: entries.toSorted((left, right) => newestFirst(left.updatedAt, right.updatedAt)),
     errors,
     truncated,
     nextCursors,
@@ -1003,7 +1003,7 @@ export function rankPullRequestMatches<Entry extends PullRequestListEntry>(
   if (query.trim().length === 0) return entries;
   return entries.toSorted((left, right) => {
     const byScore = scorePullRequestMatch(right, query) - scorePullRequestMatch(left, query);
-    return byScore !== 0 ? byScore : right.updatedAt.localeCompare(left.updatedAt);
+    return byScore !== 0 ? byScore : newestFirst(left.updatedAt, right.updatedAt);
   });
 }
 
@@ -1032,7 +1032,7 @@ export function rankPullRequestsByMergeReadiness<Entry extends PullRequestListEn
     if (byTier !== 0) return byTier;
     const measured = Number(hasMeasuredSize(right)) - Number(hasMeasuredSize(left));
     const sized = left.additions + left.deletions - (right.additions + right.deletions);
-    return measured || sized || right.updatedAt.localeCompare(left.updatedAt);
+    return measured || sized || newestFirst(left.updatedAt, right.updatedAt);
   });
 }
 
@@ -1197,6 +1197,14 @@ export function applyPullRequestOverrides<Entry extends PullRequestListEntry>(
     out.push(override === undefined ? entry : { ...entry, ...override });
   }
   return overrides.size === 0 && out.length === entries.length ? entries : out;
+}
+
+/**
+ * Newest-first order for ISO timestamps. Plain comparison orders them identically to
+ * `localeCompare` and is several times faster, which matters on lists of hundreds of rows.
+ */
+function newestFirst(left: string, right: string): number {
+  return left === right ? 0 : left < right ? 1 : -1;
 }
 
 /**
