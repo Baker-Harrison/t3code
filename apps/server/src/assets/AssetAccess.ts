@@ -55,7 +55,10 @@ import {
   timingSafeEqualBase64Url,
 } from "../auth/utils.ts";
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
-import { parseAttachmentFileExtension, resolveAttachmentPathById } from "../attachmentStore.ts";
+import {
+  parseAttachmentFileExtension,
+  resolveAttachmentPathByIdEffect,
+} from "../attachmentStore.ts";
 import * as ServerConfig from "../config.ts";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
 import { expandHomePath } from "@t3tools/provider-core/server/pathExpansion";
@@ -607,7 +610,7 @@ export const issueAssetUrl = Effect.fn("AssetAccess.issueAssetUrl")(function* (i
     }
     case "attachment": {
       const config = yield* ServerConfig.ServerConfig;
-      const attachmentPath = resolveAttachmentPathById({
+      const attachmentPath = yield* resolveAttachmentPathByIdEffect({
         attachmentsDir: config.attachmentsDir,
         attachmentId: input.resource.attachmentId,
       });
@@ -855,7 +858,7 @@ export const resolveAsset = Effect.fn("AssetAccess.resolveAsset")(function* (
 
   if (claims.kind === "attachment") {
     const config = yield* ServerConfig.ServerConfig;
-    const attachmentPath = resolveAttachmentPathById({
+    const attachmentPath = yield* resolveAttachmentPathByIdEffect({
       attachmentsDir: config.attachmentsDir,
       attachmentId: claims.attachmentId,
     });
