@@ -178,15 +178,34 @@ function upsertVisibleTurnItem(
   ) {
     return rows;
   }
-  const updated = index === -1 ? [...rows] : [...rows.slice(0, index), ...rows.slice(index + 1)];
-  const insertionIndex = updated.findIndex(
-    (row) =>
+  // Position the item would take once removed from its current slot.
+  let insertionIndex = rows.length - (index === -1 ? 0 : 1);
+  for (let candidate = 0; candidate < rows.length; candidate += 1) {
+    if (candidate === index) continue;
+    const row = rows[candidate]!;
+    if (
       row.visibility === "local" &&
       (row.item.ordinal > item.ordinal ||
         (row.item.ordinal === item.ordinal &&
-          String(row.item.id).localeCompare(String(item.id)) > 0)),
-  );
-  updated.splice(insertionIndex === -1 ? updated.length : insertionIndex, 0, next);
+          String(row.item.id).localeCompare(String(item.id)) > 0))
+    ) {
+      insertionIndex = index !== -1 && candidate > index ? candidate - 1 : candidate;
+      break;
+    }
+  }
+  // Streaming updates to an existing item keep its slot: replace it in one pass
+  // instead of rebuilding the list three times.
+  if (index !== -1 && insertionIndex === index) {
+    return rows.map((row, position) =>
+      position === index
+        ? { ...next, position }
+        : row.position === position
+          ? row
+          : { ...row, position },
+    );
+  }
+  const updated = index === -1 ? [...rows] : [...rows.slice(0, index), ...rows.slice(index + 1)];
+  updated.splice(insertionIndex, 0, next);
   return renumberVisibleItems(updated);
 }
 

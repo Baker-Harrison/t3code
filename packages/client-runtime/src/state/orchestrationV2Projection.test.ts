@@ -304,6 +304,51 @@ describe("applyOrchestrationV2ProjectionEvent", () => {
     expect(next?.visibleTurnItems.map((row) => row.position)).toEqual([0, 1]);
   });
 
+  it("moves an existing turn item when its ordinal changes", () => {
+    const items = [
+      commandItem("item-a", "a", 1),
+      commandItem("item-b", "b", 2),
+      commandItem("item-c", "c", 3),
+    ];
+    const projection = {
+      ...emptyProjection,
+      runs: [run],
+      turnItems: items,
+      visibleTurnItems: items.map((item, position) => ({
+        position,
+        visibility: "local" as const,
+        sourceThreadId: threadId,
+        sourceItemId: item.id,
+        item,
+      })),
+    };
+    const apply = (item: OrchestrationV2TurnItem, from: OrchestrationV2ThreadProjection) =>
+      applyOrchestrationV2ProjectionEvent(from, {
+        id: "event-move",
+        type: "turn-item.updated",
+        threadId,
+        runId,
+        occurredAt: now,
+        payload: item,
+      } as OrchestrationV2DomainEvent);
+
+    const movedLater = apply(commandItem("item-a", "a", 4), projection);
+    expect(movedLater?.visibleTurnItems.map((row) => row.item.id)).toEqual([
+      "item-b",
+      "item-c",
+      "item-a",
+    ]);
+    expect(movedLater?.visibleTurnItems.map((row) => row.position)).toEqual([0, 1, 2]);
+
+    const movedEarlier = apply(commandItem("item-c", "c", 0), projection);
+    expect(movedEarlier?.visibleTurnItems.map((row) => row.item.id)).toEqual([
+      "item-c",
+      "item-a",
+      "item-b",
+    ]);
+    expect(movedEarlier?.visibleTurnItems.map((row) => row.position)).toEqual([0, 1, 2]);
+  });
+
   describe("partial timeline", () => {
     const queuedRunId = RunId.make("run-queued");
     const steerRunId = RunId.make("run-steer");
