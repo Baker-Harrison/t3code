@@ -1000,13 +1000,14 @@ function unsettledRunId(latestRun: ThreadFeedLatestRun | null): RunId | null {
 export function threadFeedRunIsUnsettled(
   run: ThreadFeedLatestRun | null,
 ): run is ThreadFeedLatestRun {
-  if (run === null || run.status === "queued") return false;
+  // `waiting` has no completedAt yet, but the reply is done and only the
+  // checkpoint is left, so the feed must not keep a Thinking row up.
+  if (run === null || run.status === "queued" || run.status === "waiting") return false;
   return (
     run.completedAt === null ||
     run.status === "preparing" ||
     run.status === "starting" ||
-    run.status === "running" ||
-    run.status === "waiting"
+    run.status === "running"
   );
 }
 

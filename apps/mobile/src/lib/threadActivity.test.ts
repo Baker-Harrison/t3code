@@ -626,7 +626,7 @@ describe("buildThreadFeed", () => {
         startedAt: "2026-06-20T00:00:01.000Z",
         completedAt: null,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("adds queued input only after dispatch creates its turn item", () => {

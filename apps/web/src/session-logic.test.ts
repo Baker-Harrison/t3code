@@ -69,6 +69,17 @@ describe("V2 session presentation", () => {
         { status: "running", activeRunId: RunId.make("run-active") },
       ),
     ).toBe(false);
+    expect(
+      isLatestRunSettled(
+        {
+          runId,
+          status: "waiting",
+          startedAt: "2026-06-20T00:00:00.000Z",
+          completedAt: null,
+        },
+        { status: "waiting", activeRunId: null },
+      ),
+    ).toBe(true);
   });
 
   it("offers Stop while a run is preparing/starting, not just once it's running (#13392)", () => {
@@ -96,8 +107,11 @@ describe("V2 session presentation", () => {
     expect(deriveCanInterruptRunningThread(true, runtimeWithStatus("queued"))).toBe(false);
     expect(deriveCanInterruptRunningThread(true, runtimeWithStatus("queued", runId))).toBe(true);
 
-    expect(derivePhase(runtimeWithStatus("waiting"))).toBe("running");
-    expect(deriveCanInterruptRunningThread(true, runtimeWithStatus("waiting"))).toBe(true);
+    // Checkpoint capture is `waiting` after the reply. It is not a running turn,
+    // and Stop has no live provider turn to cancel.
+    expect(derivePhase(runtimeWithStatus("waiting"))).toBe("ready");
+    expect(deriveCanInterruptRunningThread(true, runtimeWithStatus("waiting"))).toBe(false);
+    expect(deriveCanInterruptRunningThread(true, runtimeWithStatus("waiting", runId))).toBe(false);
 
     expect(deriveCanInterruptRunningThread(true, null)).toBe(false);
   });

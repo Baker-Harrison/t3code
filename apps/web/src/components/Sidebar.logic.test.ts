@@ -926,6 +926,15 @@ describe("resolveSidebarThreadStatus", () => {
     ).toBe("working");
   });
 
+  it("treats checkpoint capture as ready once the reply is done", () => {
+    expect(
+      resolveSidebarThreadStatus({
+        ...idle,
+        runtime: { ...runtime, status: "waiting" as const },
+      }),
+    ).toBe("ready");
+  });
+
   it("keeps usage-limit stops Limited and visible until the thread recovers", () => {
     const limited = {
       ...runtime,
@@ -1267,6 +1276,17 @@ describe("resolveThreadStatusPill", () => {
         thread: baseThread,
       }),
     ).toMatchObject({ label: "Working", pulse: true });
+  });
+
+  it("does not show Working while a finished reply waits on its checkpoint", () => {
+    expect(
+      resolveThreadStatusPill({
+        thread: {
+          ...baseThread,
+          runtime: { ...baseThread.runtime, status: "waiting", activeRunId: null },
+        },
+      }),
+    ).toBeNull();
   });
 
   it("shows waiting for an idle thread with pending background tasks", () => {
@@ -2212,6 +2232,12 @@ describe("Working shelf (beta)", () => {
   it("folds away running threads and threads waiting on background work only", () => {
     expect(isSidebarThreadWorking({ ...idle, runtime })).toBe(true);
     expect(isSidebarThreadWorking(waiting)).toBe(true);
+    expect(
+      isSidebarThreadWorking({
+        ...idle,
+        runtime: { ...runtime, status: "waiting" as const },
+      }),
+    ).toBe(false);
     expect(isSidebarThreadWorking(idle)).toBe(false);
     expect(isSidebarThreadWorking({ ...idle, runtime, hasPendingApprovals: true })).toBe(false);
     expect(isSidebarThreadWorking({ ...idle, runtime, hasPendingUserInput: true })).toBe(false);

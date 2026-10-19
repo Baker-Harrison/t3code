@@ -1625,8 +1625,7 @@ export default function ChatView(props: ChatViewProps) {
       anchorRun.status !== "preparing" &&
       anchorRun.status !== "queued" &&
       anchorRun.status !== "starting" &&
-      anchorRun.status !== "running" &&
-      anchorRun.status !== "waiting"
+      anchorRun.status !== "running"
     );
   })();
   if (anchorRunSettled) {

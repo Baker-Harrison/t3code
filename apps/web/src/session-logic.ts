@@ -218,8 +218,7 @@ export function isLatestRunSettled(
     latestRun.status === "preparing" ||
     latestRun.status === "queued" ||
     latestRun.status === "starting" ||
-    latestRun.status === "running" ||
-    latestRun.status === "waiting"
+    latestRun.status === "running"
   )
     return false;
   return runtime?.activeRunId !== latestRun.runId;
@@ -1043,7 +1042,8 @@ export function derivePhase(runtime: ThreadRuntimeSummary | null): SessionPhase 
     runtime.status === "queued"
   )
     return "connecting";
-  if (runtime.status === "running" || runtime.status === "waiting") return "running";
+  // Checkpoint capture parks the run at `waiting` after the agent has stopped.
+  if (runtime.status === "running") return "running";
   return "ready";
 }
 

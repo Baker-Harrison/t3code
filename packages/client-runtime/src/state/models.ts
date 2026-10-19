@@ -78,12 +78,10 @@ export function threadRuntimeCanArchive(runtime: ThreadRuntimeSummary | null | u
 }
 
 function threadRunStatusIsActive(status: ThreadRuntimeSummary["status"]): boolean {
+  // `waiting` is checkpoint capture after the reply. It must not keep the
+  // composer, Stop button, or working shelf on a finished message.
   return (
-    status === "preparing" ||
-    status === "queued" ||
-    status === "starting" ||
-    status === "running" ||
-    status === "waiting"
+    status === "preparing" || status === "queued" || status === "starting" || status === "running"
   );
 }
 
