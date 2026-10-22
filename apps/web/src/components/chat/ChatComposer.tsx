@@ -2744,7 +2744,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       insertAttachmentReferences,
     });
 
-  const onComposerCommandKeyStable = useStableCallback(onComposerCommandKey);
   const isPathQueryActiveStable = useStableCallback(
     () => resolveActiveComposerTrigger().trigger?.kind === "path",
   );
@@ -3792,7 +3791,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     )}
                     onChange={onPromptChangeStable}
                     onVisibleSelectionChange={expandComposerForEditorChangeStable}
-                    onCommandKeyDown={onComposerCommandKeyStable}
+                    onCommandKeyDown={onComposerCommandKey}
                     onPageScrollKeyDown={onPageScrollKeyDown}
                     onPageScrollKeyUp={onPageScrollKeyUp}
                     onPageScrollRelease={onPageScrollRelease}

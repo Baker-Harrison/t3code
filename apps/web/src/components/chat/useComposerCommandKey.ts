@@ -22,6 +22,7 @@ import { type ReviewCommentContext } from "../../reviewCommentContext";
 import { composerTargetKey } from "../../composerDraftStore";
 import { listContinuationForEnter, listIndentForTab } from "../../composer-list-continuation";
 import type { Dispatch, RefObject, SetStateAction } from "react";
+import { useStableCallback } from "../../hooks/useStableCallback";
 
 /**
  * The composer's key handling inside the editor: send shortcuts, the slash/mention menu,
@@ -256,6 +257,10 @@ export function useComposerCommandKey(input: {
   };
 
   return {
-    onComposerCommandKey,
+    // The handler is a prop of the editor, so its identity has to stay put.
+    // useStableCallback is also the hook this function needs: the history ref
+    // now lives on the parent, and a use* function that calls no hook is skipped
+    // by the compiler.
+    onComposerCommandKey: useStableCallback(onComposerCommandKey),
   };
 }
